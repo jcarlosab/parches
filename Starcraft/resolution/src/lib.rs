@@ -10,6 +10,8 @@ static mut HEIGHT:usize=480;
 static mut GRID:usize=0;
 static mut GRID_LEN:usize=0;
 static mut COMPOSE:usize=0;
+static mut MOVIE_PLAY:usize=0;
+static mut VIDEO_ACTIVE:bool=false;
 static mut COPY:usize=0;
 static mut STORM:usize=0;
 static mut IN_GAME:bool=false;
@@ -156,6 +158,7 @@ unsafe fn move_root(dlg:usize,dx:i16,dy:i16,wait_surface:bool) {
 }
 
 unsafe fn frame() {
+    if VIDEO_ACTIVE {return}
     let mut live=[0usize;128]; let mut count=0;
     let mut d=read32(0x006d5e34) as usize;
     let mut in_game=false;
@@ -194,12 +197,6 @@ unsafe fn frame() {
                 MENU_VERIFIED=true;
                 log(&format!("MENU centro verificado: ({dx},{dy}) en {}x{}",WIDTH,HEIGHT));
             }
-        }
-        let buf=read32(0x006ceff4) as usize;
-        if buf!=0 && readable(buf,WIDTH*HEIGHT) {
-            // Glue surfaces are composed directly, leaving this buffer for the
-            // cursor. Keep it clear before capturing the cursor save-under.
-            ptr::write_bytes(buf as *mut u8,0,WIDTH*HEIGHT);
         }
         *(0x006cef51 as *mut u8)|=0x20;
         return
@@ -251,6 +248,7 @@ unsafe fn frame() {
     }
 }
 unsafe extern "C" fn compose() {
+    if VIDEO_ACTIVE {let f:unsafe extern "C" fn()=mem::transmute(COMPOSE);f();return}
     frame();
     GAME_FRAME_READY=false;
     let cursor=ptr::read_unaligned(0x006cef52 as *const [i16;2]);
@@ -468,14 +466,14 @@ unsafe extern "system" fn ui_hit(x:i32,y:i32)->u32 {
 // Redirect all menu primary-surface locks to a private offscreen canvas.
 // The real primary receives exactly one final scaled image per composed frame.
 unsafe extern "system" fn menu_lock(surface:i32,rect:*const Rect,out:*mut usize,pitch:*mut i32,flags:i32)->i32 {
-    if surface==0 && (IN_GAME || MENU_FULL_ROOT) && MENU_STAGE!=0 {
+    if surface==0 && !VIDEO_ACTIVE && (IN_GAME || MENU_FULL_ROOT) && MENU_STAGE!=0 {
         if out.is_null() || pitch.is_null() {return 0}
         let (x,y)=if rect.is_null() {(0,0)}else{
             let r=*rect;
             if r.left<0 || r.top<0 || r.right>WIDTH as i32 || r.bottom>HEIGHT as i32 || r.right<=r.left || r.bottom<=r.top {return 0}
             (r.left as usize,r.top as usize)
         };
-        let target=if IN_GAME {read32(0x006ceff4) as usize}else{MENU_STAGE};
+        let target=if IN_GAME && !VIDEO_ACTIVE {read32(0x006ceff4) as usize}else{MENU_STAGE};
         if target==0 {return 0}
         *out=target+y*WIDTH+x;*pitch=WIDTH as i32;return 1
     }
@@ -483,10 +481,27 @@ unsafe extern "system" fn menu_lock(surface:i32,rect:*const Rect,out:*mut usize,
     f(surface,rect,out,pitch,flags)
 }
 unsafe extern "system" fn menu_unlock(surface:i32,pixels:usize,a:i32,b:i32)->i32 {
-    if MENU_STAGE!=0 && pixels>=MENU_STAGE && pixels<MENU_STAGE+WIDTH*HEIGHT {return 1}
-    if IN_GAME {let fb=read32(0x006ceff4) as usize;if fb!=0 && pixels>=fb && pixels<fb+WIDTH*HEIGHT {return 1}}
+    if !VIDEO_ACTIVE && MENU_STAGE!=0 && pixels>=MENU_STAGE && pixels<MENU_STAGE+WIDTH*HEIGHT {return 1}
+    if IN_GAME && !VIDEO_ACTIVE {let fb=read32(0x006ceff4) as usize;if fb!=0 && pixels>=fb && pixels<fb+WIDTH*HEIGHT {return 1}}
     let f:unsafe extern "system" fn(i32,usize,i32,i32)->i32=mem::transmute(STORM_UNLOCK);
     f(surface,pixels,a,b)
+}
+// Native movie dispatcher receives its identifier in EAX rather than the stack.
+unsafe fn eax_stub(callback:usize)->Result<usize,String> {
+    let p=alloc(48,true)?;
+    let mut code=vec![0x55,0x89,0xe5,0x83,0xe4,0xf0,0x83,0xec,0x0c,0x50,0xb8];
+    code.extend_from_slice(&(callback as u32).to_le_bytes());
+    code.extend_from_slice(&[0xff,0xd0,0x89,0xec,0x5d,0xc3]);write(p,&code)?;Ok(p)
+}
+unsafe extern "C" fn play_movie(id:u32)->u32 {
+    VIDEO_ACTIVE=true;IN_GAME=false;GAME_FRAME_READY=false;MENU_FULL_ROOT=false;
+    MENU_HAS_IMAGE=false;AI_TITLE=false;TITLE_READY=false;
+    ptr::write_bytes(MENU_STAGE as *mut u8,0,WIDTH*HEIGHT);
+    log(&format!("Video nativo: {id}"));
+    let result:u32;
+    std::arch::asm!("call {target}",target=in(reg) MOVIE_PLAY,inlateout("eax") id=>result,clobber_abi("C"));
+    VIDEO_ACTIVE=false;MENU_FULL_ROOT=false;MENU_HAS_IMAGE=false;
+    log(&format!("Video terminado: {id}, resultado {result}"));result
 }
 unsafe fn menu_primary() {
     let (left,top,w,h)=menu_viewport(WIDTH,HEIGHT);
@@ -539,14 +554,14 @@ unsafe extern "system" fn restore_under(bitmap:u32) {
     let f:unsafe extern "system" fn(u32)=mem::transmute(RESTORE);f(bitmap);
 }
 unsafe extern "system" fn game_window(hwnd:Handle,msg:u32,w:usize,mut l:isize)->isize {
-    if IN_GAME && (0x200..=0x209).contains(&msg) {
+    if !VIDEO_ACTIVE && IN_GAME && (0x200..=0x209).contains(&msg) {
         let x=l as u32 as u16 as i16 as i32;
         let y=(l as u32>>16) as u16 as i16 as i32;
         let (mx,my)=if UI_MODAL {modal_input(WIDTH,HEIGHT,MODAL_SCALE,x,y)}else{hud_pointer(WIDTH,HEIGHT,x,y)};
         UI_POINTER_DELTA=(x-mx,y-my);
         l=((mx as u16 as u32)|((my as u16 as u32)<<16)) as isize;
     }
-    if !IN_GAME && MENU_FULL_ROOT && MENU_HAS_IMAGE && (0x200..=0x209).contains(&msg) {
+    if !VIDEO_ACTIVE && !IN_GAME && MENU_FULL_ROOT && MENU_HAS_IMAGE && (0x200..=0x209).contains(&msg) {
         let x=(l as u32 as u16 as i16) as i32;
         let y=((l as u32>>16) as u16 as i16) as i32;
         let (left,top,vw,vh)=menu_viewport(WIDTH,HEIGHT);
@@ -570,6 +585,13 @@ unsafe extern "system" fn background_loaded(file:*const u8,palette:usize,bits:us
     for i in 0..260 {
         if !readable(file as usize+i,1) {break}
         let c=*file.add(i);if c==0 {break}name.push(c.to_ascii_lowercase());
+    }
+    if name.ends_with(b"title.pcx") || name.ends_with(b"backgnd.pcx") {
+        let buf=read32(0x006ceff4) as usize;
+        if readable(buf,WIDTH*HEIGHT) {ptr::write_bytes(buf as *mut u8,0,WIDTH*HEIGHT);}
+        if MENU_CURSOR!=0 {ptr::write_bytes(MENU_CURSOR as *mut u8,0,640*480);}
+        if MENU_STAGE!=0 {ptr::write_bytes(MENU_STAGE as *mut u8,0,WIDTH*HEIGHT);}
+        log(&format!("Fondo de menu: {}",String::from_utf8_lossy(&name)));
     }
     AI_TITLE=name.ends_with(b"title.pcx");
     if AI_TITLE {TITLE_READY=false;}
@@ -625,7 +647,8 @@ unsafe fn install(w:u32,h:u32)->Result<(),String> {
     for p in &patches {if !readable(p.va,p.expect.len()) || slice::from_raw_parts(p.va as *const u8,p.expect.len())!=p.expect {return Err(format!("Firma incompatible en {:08x}",p.va))}}
     STORM=GetModuleHandleW(wide("storm.dll").as_ptr()) as usize;
     if STORM==0 {return Err("Storm.dll no está cargado".into())}
-    for (at,sig) in [(0x41e280usize,&[0x55,0x8b,0xec,0x83,0xec,0x14][..]),
+    for (at,sig) in [(0x4d4470usize,&[0x55,0x8b,0xec,0x51,0x56][..]),
+                    (0x41e280usize,&[0x55,0x8b,0xec,0x83,0xec,0x14][..]),
                     (STORM+0x1a520,&[0x55,0x8b,0xec,0x8b,0x45,0x18][..]),
                     (0x41cb50,&[0x55,0x8b,0xec,0x83,0xec,0x2c][..]),
                     (0x41cf3c,&[0xc2,0x08,0x00][..]),
@@ -665,6 +688,8 @@ unsafe fn install(w:u32,h:u32)->Result<(),String> {
     for x in 0..mw {write32(MENU_XMAP+x*4,(x*640/mw) as u32);}
     for y in 0..mh {write32(MENU_YMAP+y*4,(y*480/mh) as u32);}
     for p in &patches {write(p.va,&p.bytes)?;}
+    let movie_entry=eax_stub(play_movie as *const () as usize)?;
+    MOVIE_PLAY=hook(0x4d4470,movie_entry,&[0x55,0x8b,0xec,0x51,0x56])?;
     let compose_entry=abi_stub(compose as *const () as usize,0,false)?;
     let copy_entry=abi_stub(copy as *const () as usize,5,true)?;
     let restore_entry=abi_stub(restore_under as *const () as usize,1,true)?;
@@ -690,7 +715,7 @@ unsafe fn install(w:u32,h:u32)->Result<(),String> {
     write(ui_stub,&code)?;
     hook(0x4d1140,ui_stub,&[0x3b,0x05,0x6c,0x6b,0x59,0x00])?;
     INITIALIZED=true;
-    log(&format!("Rust v10: resolución {w}x{h}; {} firmas comprobadas; interfaz ampliada a la izquierda, recursos ampliados y ventanas sobre texto",patches.len()));
+    log(&format!("Rust v12: resolución {w}x{h}; {} firmas comprobadas; interfaz ampliada a la izquierda, recursos ampliados y ventanas sobre texto",patches.len()));
     Ok(())
 }
 
@@ -706,6 +731,7 @@ pub unsafe extern "system" fn DllMain(module:Handle,reason:u32,_reserved:Handle)
 
 #[no_mangle]
 pub unsafe extern "system" fn ResolutionSelfTest(_p:Handle)->u32 {
+    unsafe extern "C" fn movie_id(id:u32)->u32 {id*17+3}
     unsafe extern "C" fn replacement()->u32 {11}
     unsafe extern "system" fn sum5(a:u32,b:u32,c:u32,d:u32,e:u32)->u32 {a+2*b+3*c+4*d+5*e}
     unsafe extern "system" fn sum2(a:u32,b:u32)->u32 {3*a+7*b}
@@ -713,6 +739,12 @@ pub unsafe extern "system" fn ResolutionSelfTest(_p:Handle)->u32 {
     unsafe extern "fastcall" fn sum_fast(a:u32,b:u32,c:u32,d:u32,e:u32)->u32 {a+2*b+3*c+4*d+5*e}
     unsafe extern "C" fn scratch() {std::arch::asm!("mov eax, 999",out("eax") _,out("ecx") _,out("edx") _);}
     let test=(||->Result<(),String>{
+        let movie=eax_stub(movie_id as *const () as usize)?;
+        for id in 0..27u32 {
+            let result:u32;
+            std::arch::asm!("call {target}",target=in(reg) movie,inlateout("eax") id=>result,clobber_abi("C"));
+            if result!=id*17+3 {return Err("El puente de video perdii el identificador EAX".into())}
+        }
         let p=alloc(32,true)?;
         write(p,&[0xb8,7,0,0,0,0x90,0xc3])?;
         let orig=hook(p,replacement as *const () as usize,&[0xb8,7,0,0,0,0x90])?;

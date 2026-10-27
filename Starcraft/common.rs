@@ -43,16 +43,10 @@ extern "system" {
     pub fn VirtualQuery(address:Handle,info:*mut MemoryInfo,len:usize)->usize;
     pub fn FlushInstructionCache(process:Handle,address:Handle,size:usize)->i32;
     pub fn CreateProcessW(app:*const u16,command:*mut u16,pa:Handle,ta:Handle,inherit:i32,flags:u32,environment:Handle,cwd:*const u16,start:*mut StartupInfo,info:*mut ProcessInfo)->i32;
-    pub fn VirtualAllocEx(process:Handle,address:Handle,size:usize,kind:u32,protect:u32)->Handle;
-    pub fn VirtualFreeEx(process:Handle,address:Handle,size:usize,kind:u32)->i32;
-    pub fn WriteProcessMemory(process:Handle,address:Handle,data:*const u8,size:usize,written:*mut usize)->i32;
-    pub fn ReadProcessMemory(process:Handle,address:Handle,data:*mut u8,size:usize,read:*mut usize)->i32;
-    pub fn CreateRemoteThread(process:Handle,attr:Handle,stack:usize,start:Handle,param:Handle,flags:u32,id:*mut u32)->Handle;
     pub fn WaitForSingleObject(handle:Handle,ms:u32)->u32;
-    pub fn GetExitCodeThread(thread:Handle,code:*mut u32)->i32;
     pub fn GetExitCodeProcess(process:Handle,code:*mut u32)->i32;
+    pub fn GetProcessId(process:Handle)->u32;
     pub fn CloseHandle(handle:Handle)->i32;
-    pub fn ResumeThread(thread:Handle)->u32;
     pub fn TerminateProcess(process:Handle,code:u32)->i32;
     pub fn CreateMutexW(attr:Handle,initial:i32,name:*const u16)->Handle;
 }

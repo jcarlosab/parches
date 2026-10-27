@@ -70,7 +70,10 @@ struct Session {dir:PathBuf,game:PathBuf,active:bool}
 impl Session {
     fn restore(dir:&Path,game:&Path)->Result<(),String> {
         if !dir.join("ready").exists() {return Ok(())}
-        for n in ["ddraw.dll","ddraw.ini"] {
+        let names:&[&str]=if fs::read(dir.join("ready")).map_err(io)?==b"2" {
+            &["ddraw.dll","ddraw.ini","version.dll","sc_resolution.dll","sc-hd-session.ini"]
+        }else{&["ddraw.dll","ddraw.ini"]}; // Recover older launchers' journals too.
+        for &n in names {
             let target=game.join(n);
             if dir.join(format!("{n}.present")).exists() {fs::copy(dir.join(n),target).map_err(io)?;}
             else if target.exists() {fs::remove_file(target).map_err(io)?;}
@@ -91,19 +94,23 @@ impl Session {
     fn begin(game:&Path,c:&Config)->Result<Self,String> {
         Self::recover()?;
         let dir=bundle().join("session-backup"); fs::create_dir_all(&dir).map_err(io)?;
-        for n in ["ddraw.dll","ddraw.ini"] {
+        for n in ["ddraw.dll","ddraw.ini","version.dll","sc_resolution.dll","sc-hd-session.ini"] {
             let marker=dir.join(format!("{n}.present")); if marker.exists() {fs::remove_file(&marker).map_err(io)?;}
             if game.join(n).exists() {fs::copy(game.join(n),dir.join(n)).map_err(io)?;fs::write(marker,b"1").map_err(io)?;}
         }
         if dir.join("pid.txt").exists() {fs::remove_file(dir.join("pid.txt")).map_err(io)?;}
         fs::write(dir.join("game.txt"),game.to_string_lossy().as_bytes()).map_err(io)?;
-        fs::write(dir.join("ready"),b"1").map_err(io)?;
+        fs::write(dir.join("ready"),b"2").map_err(io)?;
         let mut s=Self{dir,game:game.to_owned(),active:true};
         let result=(||{
-            let source=bundle().join("ddraw.dll");let target=game.join("ddraw.dll");
+            for name in ["ddraw.dll","version.dll","sc_resolution.dll"] {
+            let source=bundle().join(name);let target=game.join(name);
             if fs::canonicalize(&source).map_err(io)?!=fs::canonicalize(&target).unwrap_or_else(|_|target.clone()) {
                 fs::copy(source,target).map_err(io)?;
             }
+            }
+            let (w,h)=PRESETS[c.preset];
+            fs::write(game.join("sc-hd-session.ini"),format!("[HD]\nwidth={w}\nheight={h}\n")).map_err(io)?;
             let (ow,oh)=match c.output {1=>(1920,1080),2=>(2560,1440),3=>(3840,2160),_=>(0,0)};
             let (w,h)=PRESETS[c.preset];
             let (ow,oh)=if c.mode==1 && c.output==0 {(w,h)}else{(ow,oh)};
@@ -119,49 +126,26 @@ impl Session {
 impl Drop for Session {fn drop(&mut self) {if self.active {if let Err(e)=self.finish() {log(&format!("Restauración pendiente: {e}"));}}}}
 
 struct GameProcess {info:ProcessInfo,finished:bool}
+#[repr(C)]
+struct ShellInfo {
+    size:u32,mask:u32,window:Handle,verb:*const u16,file:*const u16,args:*const u16,
+    directory:*const u16,show:i32,instance:Handle,idlist:Handle,class:*const u16,
+    class_key:Handle,hotkey:u32,icon:Handle,process:Handle,
+}
+#[link(name="shell32")]
+extern "system" {fn ShellExecuteExW(info:*mut ShellInfo)->i32;}
 impl Drop for GameProcess {fn drop(&mut self) {unsafe {
     if !self.finished {TerminateProcess(self.info.process,1);WaitForSingleObject(self.info.process,5000);}
-    CloseHandle(self.info.thread); CloseHandle(self.info.process);
+    if !self.info.thread.is_null() {CloseHandle(self.info.thread);} CloseHandle(self.info.process);
 }}}
-unsafe fn remote_write(process:Handle,p:Handle,bytes:&[u8])->Result<(),String> {
-    let mut n=0;
-    if WriteProcessMemory(process,p,bytes.as_ptr(),bytes.len(),&mut n)==0 || n!=bytes.len() {return Err(format!("No se pudo preparar el proceso ({})",GetLastError()))}Ok(())
-}
-unsafe fn remote_call(process:Handle,f:Handle,param:Handle)->Result<u32,String> {
-    let thread=CreateRemoteThread(process,NULL,0,f,param,0,ptr::null_mut());
-    if thread.is_null() {return Err(format!("No se pudo iniciar el componente ({})",GetLastError()))}
-    let wait=WaitForSingleObject(thread,20000);let mut code=0;
-    let ok=GetExitCodeThread(thread,&mut code);CloseHandle(thread);
-    if wait!=0 || ok==0 {return Err("El componente no respondió dentro de 20 segundos".into())}Ok(code)
-}
-unsafe fn inject(process:Handle,w:u32,h:u32)->Result<(),String> {
-    let dll=bundle().join("sc_resolution.dll");
-    let path:Vec<u16>=dll.as_os_str().encode_wide().chain(Some(0)).collect();
-    let memory=VirtualAllocEx(process,NULL,path.len()*2+16,0x3000,4);
-    if memory.is_null() {return Err("No se pudo reservar memoria en el juego".into())}
-    let bytes=std::slice::from_raw_parts(path.as_ptr() as *const u8,path.len()*2);
-    remote_write(process,memory,bytes)?;
-    let kernel=GetModuleHandleW(wide("kernel32.dll").as_ptr());
-    let load=GetProcAddress(kernel,b"LoadLibraryW\0".as_ptr());
-    let remote=remote_call(process,load,memory)? as usize;
-    if remote==0 {return Err("Windows no pudo cargar sc_resolution.dll".into())}
-    // Read the export RVA from a non-executing mapping of our own DLL.
-    let local=LoadLibraryExW(path.as_ptr(),NULL,1);
-    if local.is_null() {return Err("No se pudo inspeccionar la DLL del launcher".into())}
-    let exported=GetProcAddress(local,b"InitializeResolution\0".as_ptr());
-    let rva=(exported as usize).wrapping_sub(local as usize);FreeLibrary(local);
-    if exported.is_null() {return Err("La DLL no exporta InitializeResolution".into())}
-    let cfg=[w,h];
-    remote_write(process,memory,std::slice::from_raw_parts(cfg.as_ptr() as *const u8,8))?;
-    if remote_call(process,(remote+rva) as Handle,memory)?!=1 {return Err("El parche ha rechazado la instalación. Consulta rust-resolution.log en la carpeta del juego.".into())}
-    VirtualFreeEx(process,memory,0,0x8000);Ok(())
-}
 use std::os::windows::ffi::OsStrExt;
 fn launch(c:Config,notify:Option<usize>)->Result<(),String> {
     let smoke=std::env::args().any(|a|a=="--smoke-test");
     unsafe {if !FindWindowW(wide("SWarClass").as_ptr(),ptr::null()).is_null() {return Err("Ya hay una ventana de StarCraft abierta. Ciérrala antes de iniciar otra partida.".into())}}
     verify(&c.game)?;
-    if !bundle().join("sc_resolution.dll").exists() {return Err("Falta sc_resolution.dll junto al launcher".into())}
+    for name in ["sc_resolution.dll","version.dll","ddraw.dll"] {
+        if !bundle().join(name).exists() {return Err(format!("Falta {name} junto al launcher"))}
+    }
     if !smoke {save(&c)?;}
     let (w,h)=PRESETS[c.preset];
     log(&format!("Iniciando {w}x{h}, modo={}, salida={}",c.mode,c.output));
@@ -171,11 +155,19 @@ fn launch(c:Config,notify:Option<usize>)->Result<(),String> {
         let mut pi:ProcessInfo=mem::zeroed();
         let app:Vec<u16>=c.game.join("StarCraft.exe").as_os_str().encode_wide().chain(Some(0)).collect();
         let cwd:Vec<u16>=c.game.as_os_str().encode_wide().chain(Some(0)).collect();
-        if CreateProcessW(app.as_ptr(),ptr::null_mut(),NULL,NULL,0,4,NULL,cwd.as_ptr(),&mut si,&mut pi)==0 {return Err(format!("No se pudo abrir StarCraft ({})",GetLastError()))}
+        if CreateProcessW(app.as_ptr(),ptr::null_mut(),NULL,NULL,0,0,NULL,cwd.as_ptr(),&mut si,&mut pi)==0 {
+            let error=GetLastError();
+            if error!=740 {return Err(format!("No se pudo abrir StarCraft ({error})"))}
+            // Respect Windows' elevation/compatibility choice. The shell owns
+            // any UAC prompt; do not alter compatibility or protection settings.
+            let mut shell:ShellInfo=mem::zeroed();shell.size=mem::size_of::<ShellInfo>() as u32;
+            shell.mask=0x40|0x100; shell.file=app.as_ptr();shell.directory=cwd.as_ptr();shell.show=1;
+            if ShellExecuteExW(&mut shell)==0 || shell.process.is_null() {return Err(format!("Windows no pudo abrir el juego ({})",GetLastError()))}
+            pi.process=shell.process;
+            pi.pid=GetProcessId(shell.process);
+        }
         let mut process=GameProcess{info:pi,finished:false};
         fs::write(session.dir.join("pid.txt"),process.info.pid.to_string()).map_err(io)?;
-        if c.preset!=0 {inject(process.info.process,w,h)?;}
-        if ResumeThread(process.info.thread)==u32::MAX {return Err("No se pudo reanudar el juego".into())}
         if let Some(hwnd)=notify {PostMessageW(hwnd as Handle,0x8002,0,0);}
         if smoke {
             if WaitForSingleObject(process.info.process,12000)==258 {

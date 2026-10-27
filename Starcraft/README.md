@@ -27,7 +27,9 @@ configuración gráfica anterior. Usa el parche en partidas individuales sin con
 - Filtros de píxel nítido, suavizado, CRT de televisor y monitor de tubo de PC.
 - Pantalla inicial mejorada con IA, con el texto de carga original y fondo preparado una sola vez.
 
-El parche se aplica en memoria y no modifica `StarCraft.exe` en disco.
+El parche se carga dentro del juego y no modifica `StarCraft.exe` en disco.
+El launcher abre el juego sin escribir en su proceso ni crear hilos remotos.
+Los vídeos conservan su presentación y tamaño originales.
 
 ## Imágenes
 
@@ -45,7 +47,7 @@ El parche se aplica en memoria y no modifica `StarCraft.exe` en disco.
 
 ## Archivos
 
-`StarCraft-HD.exe`, `sc_resolution.dll`, `ddraw.dll` y `filters/` deben permanecer juntos.
+`StarCraft-HD.exe`, `sc_resolution.dll`, `version.dll`, `ddraw.dll` y `filters/` deben permanecer juntos.
 `launcher.ini` contiene los ajustes; `launcher.log` y `rust-resolution.log` permiten
 consultar errores. No borres `session-backup` si contiene un archivo `ready`:
 vuelve a abrir el launcher con el juego cerrado para recuperar la configuración.

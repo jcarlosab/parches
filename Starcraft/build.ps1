@@ -33,6 +33,7 @@ try {
     New-Item -ItemType Directory -Force release/filters | Out-Null
     Copy-Item (Join-Path $built 'StarCraft-HD.exe') release/
     Copy-Item (Join-Path $built 'sc_resolution.dll') release/
+    Copy-Item (Join-Path $built 'version.dll') release/
     Copy-Item assets/ddraw.dll release/
     Copy-Item assets/filters/*.glsl release/filters/ -Force
     Copy-Item THIRD-PARTY.txt release/LICENCIAS.txt

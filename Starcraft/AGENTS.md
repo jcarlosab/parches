@@ -3,7 +3,7 @@
 ## Alcance y estructura
 
 Este directorio es un workspace Rust de Windows x86. `launcher/src/main.rs`
-contiene el launcher Win32, configuración, restauración e inyección;
+contiene el launcher Win32, configuración, restauración y arranque normal;
 `resolution/src/lib.rs`, el componente de resolución; `common.rs`, las llamadas
 Win32 y operaciones de composición compartidas. `resolution/data/*.bin` son las
 siete tablas verificadas. No modifiques lógica de juego, temporizadores ni red.
@@ -30,7 +30,24 @@ storm.dll `706ff2164ca472f27c44235ed55586644e5c86e68cd69b62d76f5a78778bff25`.
 
 ## Contratos que hay que conservar
 
-- Aplicar parches con el proceso suspendido, conservando el EXE en disco.
+- El launcher no debe inyectar código en otros procesos: no usar WriteProcessMemory,
+  VirtualAllocEx ni CreateRemoteThread. Abre el juego normalmente; si Windows exige
+  elevación, delega en ShellExecuteEx y respeta el aviso del sistema.
+- `bootstrap/` genera version.dll, que reenvía la ABI al Version del directorio del
+  sistema. Solo prepara un salto en la entrada del EXE de StarCraft. La carga de
+  sc_resolution.dll ocurre en esa entrada, fuera de DllMain y del bloqueo del loader.
+  Restaurar los siete bytes originales antes de inicializar. Alinear pila y conservar
+  todos los registros/banderas. La base GNU predeterminada 0x10000000 colisiona con
+  Smackw32.dll, que no admite reubicación; usar 0x61000000 para este componente.
+- Conservar EXE en disco. Comprobar las firmas antes de escribir en memoria propia.
+- En vídeos, el dispatcher 0x4d4470 recibe el ID en EAX. No truncarlo con una firma
+  stdcall. Mientras reproduce, conservar la presentación nativa de Smacker, sin
+  redirigir sus locks ni componer los menús sobre ella. No borrar el framebuffer de briefing cada frame;
+  solo limpiar al cargar un nuevo backgnd.pcx/title.pcx.
+- Defender detectó el launcher antiguo como Behavior:Win32/DefenseEvasion.A!ml.
+  No restaurar cuarentena, añadir exclusiones, desactivar protección ni ocultar
+  código para evitar la detección. Verificar el nuevo paquete y no garantizar que
+  nunca será detectado. Mantener la implementación auditable y sin empaquetadores.
 - Alinear la pila a 16 bytes antes de callbacks Rust. Storm ordinal 325 recibe
   OCHO parámetros y termina con `ret 0x20`; truncar esa firma causó 0xc0000005.
 - Los diálogos trabajan en coordenadas lógicas; la presentación y su transformación
