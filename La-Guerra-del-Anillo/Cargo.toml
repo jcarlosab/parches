@@ -1,0 +1,13 @@
+[package]
+name = "wotr-hd"
+version = "0.1.4"
+edition = "2021"
+
+[lib]
+name = "d3d9"
+crate-type = ["cdylib"]
+
+[profile.release]
+opt-level = 2
+panic = "abort"
+strip = true
