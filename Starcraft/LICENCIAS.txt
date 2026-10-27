@@ -1,0 +1,41 @@
+This distribution includes or derives portions from the following MIT projects.
+
+1. Instruction maps and renderer research adapted from decompile-sc
+   https://github.com/inwenis/decompile-sc
+   Copyright (c) 2026 Filip Kucharczyk
+   Original LICENSE: tools/vendor/LICENSE-decompile-sc.txt
+
+   The launcher and injected resolution runtime were implemented in Rust for this
+   project. Generated instruction data and the renderer/HUD mechanism use the
+   upstream instruction map and documented reverse-engineering findings.
+   The upstream scplugin.dll and scinject.exe are not used by this launcher.
+
+2. cnc-ddraw graphical presenter, distributed as ddraw.dll
+   https://github.com/FunkyFr3sh/cnc-ddraw
+   Copyright (c) 2025 github.com/FunkyFr3sh
+   MIT License. Version 7.1 binary included under the MIT license.
+   cnc-ddraw performs DirectDraw presentation and output scaling. It does not
+   supply this launcher's resolution patch or its Rust injection/runtime code.
+
+MIT License
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+StarCraft and StarCraft: Brood War are trademarks of Blizzard Entertainment.
+No original game executables or archives are included. Screenshots and AI-restored artwork are previews or patch artwork only.

@@ -1,0 +1,8 @@
+[package]
+name = "starcraft-launcher"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "StarCraft-HD"
+path = "src/main.rs"

@@ -1,0 +1,9 @@
+[workspace]
+members = ["launcher", "resolution"]
+resolver = "2"
+
+[profile.release]
+panic = "abort"
+lto = true
+strip = true
+opt-level = 2

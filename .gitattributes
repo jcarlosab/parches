@@ -1,0 +1,10 @@
+* text=auto
+*.rs text eol=lf
+*.py text eol=lf
+*.md text eol=lf
+*.png binary
+*.ico binary
+*.idx binary
+*.bin binary
+*.dll binary
+*.zip binary

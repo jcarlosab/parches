@@ -1,0 +1,11 @@
+/toolchain/
+/target/
+/reference/
+/qa/
+/dist/
+/release/
+launcher.ini
+*.log
+session-backup/
+__pycache__/
+*.pyc
