@@ -60,6 +60,11 @@ storm.dll `706ff2164ca472f27c44235ed55586644e5c86e68cd69b62d76f5a78778bff25`.
   Mantener el orden de ventanas, listas desplegables, ayudas y cursor.
 - El fondo de recursos usa una máscara basada en RGB de la paleta y conexión
   con el borde; no basta con tratar el índice 0 como transparente.
+- Smacker puede dejar la paleta de la superficie primaria distinta de la
+  paleta actual de Storm al abrir el briefing por primera vez. Antes de publicar
+  un men� completo, comparar RGB con Storm+0x5e670 y sincronizar solo si difiere.
+  Usar la paleta actual (incluye el fundido), nunca la paleta objetivo 0x6ceb40.
+  No intervenir en VIDEO_ACTIVE ni en partida, ni bloquear llamadas de Smacker.
 - El callback restore-under no se ejecuta cuando el juego oculta el cursor.
   Conservar su último rectángulo y renovarlo con el fondo limpio. No reemplazar
   todo el primer plano: también contiene los textos directos del briefing.

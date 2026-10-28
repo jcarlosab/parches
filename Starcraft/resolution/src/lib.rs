@@ -526,6 +526,30 @@ unsafe extern "C" fn play_movie(id:u32)->u32 {
     VIDEO_ACTIVE=false;MENU_FULL_ROOT=false;MENU_HAS_IMAGE=false;
     log(&format!("Video terminado: {id}, resultado {result}"));result
 }
+// Smacker can replace the attached palette after the native menu fade.
+// The offscreen compositor must publish the current Storm palette along with
+// its pixels. Compare RGB only (palette flags differ between implementations),
+// and retain the current faded colors instead of forcing the target palette.
+unsafe fn synchronize_menu_palette() {
+    let primary=read32(STORM+0x5ea84) as usize;
+    if !readable(primary,4) {return}
+    let vt=read32(primary) as usize;
+    if !readable(vt+0x50,4) {return}
+    let get:unsafe extern "system" fn(usize,*mut usize)->i32=mem::transmute(read32(vt+0x50) as usize);
+    let mut pal=0usize;
+    if get(primary,&mut pal)!=0 || pal==0 {return}
+    let pvt=read32(pal) as usize;
+    let entries:unsafe extern "system" fn(usize,u32,u32,u32,*mut u8)->i32=mem::transmute(read32(pvt+16) as usize);
+    let set:unsafe extern "system" fn(usize,u32,u32,u32,*const u8)->i32=mem::transmute(read32(pvt+24) as usize);
+    let release:unsafe extern "system" fn(usize)->u32=mem::transmute(read32(pvt+8) as usize);
+    let mut colors=[0u8;1024];
+    let expected=slice::from_raw_parts((STORM+0x5e670) as *const u8,1024);
+    if entries(pal,0,0,256,colors.as_mut_ptr())==0 && (0..256).any(|i|colors[i*4..i*4+3]!=expected[i*4..i*4+3]) {
+        let result=set(pal,0,0,256,expected.as_ptr());
+        if DIAGNOSTICS {log(&format!("Paleta de menu sincronizada: {result}, actual={}, esperada={}",colors.iter().map(|&c|c as usize).sum::<usize>(),expected.iter().map(|&c|c as usize).sum::<usize>()));}
+    }
+    release(pal);
+}
 unsafe fn menu_primary() {
     let (left,top,w,h)=menu_viewport(WIDTH,HEIGHT);
     ptr::write_bytes(MENU_OUTPUT as *mut u8,0,WIDTH*HEIGHT);
@@ -557,6 +581,7 @@ unsafe fn menu_primary() {
     if !MENU_SCALE_LOGGED {MENU_SCALE_LOGGED=true;log("Presentación única: menú lógico original, desplegables incluidos");}
 }
 unsafe fn publish_frame() {
+    if !IN_GAME && !VIDEO_ACTIVE && MENU_FULL_ROOT {synchronize_menu_palette();}
     let lock:unsafe extern "system" fn(i32,*const Rect,*mut usize,*mut i32,i32)->i32=mem::transmute(STORM_LOCK);
     let unlock:unsafe extern "system" fn(i32,usize,i32,i32)->i32=mem::transmute(STORM_UNLOCK);
     let mut dst=0usize;let mut pitch=0;
@@ -741,7 +766,7 @@ unsafe fn install(w:u32,h:u32)->Result<(),String> {
     write(ui_stub,&code)?;
     hook(0x4d1140,ui_stub,&[0x3b,0x05,0x6c,0x6b,0x59,0x00])?;
     INITIALIZED=true;
-    log(&format!("Rust v14: resolución {w}x{h}; {} firmas comprobadas; interfaz ampliada a la izquierda, recursos ampliados y ventanas sobre texto",patches.len()));
+    log(&format!("Rust v16: resolución {w}x{h}; {} firmas comprobadas; interfaz ampliada a la izquierda, recursos ampliados y ventanas sobre texto",patches.len()));
     Ok(())
 }
 
