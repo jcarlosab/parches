@@ -4,6 +4,24 @@ pub type Handle = *mut c_void;
 pub const NULL: Handle = std::ptr::null_mut();
 pub fn wide(s: &str) -> Vec<u16> { s.encode_utf16().chain(Some(0)).collect() }
 
+// The menu foreground includes direct briefing text as well as the cursor.
+// Replace all rows, including zeros, when a hidden cursor has no save-under.
+pub fn copy_menu_foreground(frame:&[u8],pitch:usize,foreground:&mut [u8]) {
+    assert!(pitch>=640 && frame.len()>=pitch*480 && foreground.len()>=640*480);
+    for y in 0..480 {foreground[y*640..(y+1)*640].copy_from_slice(&frame[y*pitch..y*pitch+640]);}
+}
+pub fn menu_content_visible(stage:&[u8],pitch:usize,foreground:&[u8],cursor:Option<[i16;4]>)->bool {
+    assert!(pitch>=640 && stage.len()>=pitch*480 && foreground.len()>=640*480);
+    for y in 0..480 {
+        if stage[y*pitch..y*pitch+640].iter().any(|&p|p!=0) {return true}
+        for x in 0..640 {
+            if foreground[y*640+x]!=0 && !cursor.is_some_and(|r|x as i32>=r[0] as i32 &&
+                x as i32<=r[2] as i32 && y as i32>=r[1] as i32 && y as i32<=r[3] as i32) {return true}
+        }
+    }
+    false
+}
+
 #[repr(C)]
 #[derive(Default, Clone, Copy)]
 pub struct Rect { pub left: i32, pub top: i32, pub right: i32, pub bottom: i32 }
