@@ -189,24 +189,15 @@ fn pe_offset(exe:&[u8],va:usize)->Option<usize> {
     for i in 0..count {let p=first+i*40;let start=u32at(exe,p+12);let size=u32at(exe,p+16);if rva>=start && rva<start+size {return Some(u32at(exe,p+20)+rva-start)}} None
 }
 fn self_test()->Result<(),String> {
-    let mut foreground=vec![0u8;640*480];let mut frame=vec![0u8;1920*1080];
-    let background=vec![0u8;1920*1080];let cursor=[100i16,100,119,119];
-    frame[105*1920+105]=31;
-    copy_menu_foreground(&frame,1920,&mut foreground);
-    if menu_content_visible(&background,1920,&foreground,Some(cursor)) {
-        return Err("Una transición vacía solo con cursor sustituye el último fotograma".into())
+    let mut foreground=vec![0u8;640*480];let frame=vec![0u8;1920*1080];
+    foreground[105*640+105]=31;foreground[200*640+300]=42;
+    refresh_cursor_region(&mut foreground,&frame,1920,[100,100,119,119]);
+    if foreground[105*640+105]!=0 || foreground[200*640+300]!=42 {
+        return Err("El cursor oculto deja restos o elimina texto del briefing".into())
     }
-    frame[200*1920+300]=42;frame[105*1920+105]=0;
-    copy_menu_foreground(&frame,1920,&mut foreground);
-    if foreground[105*640+105]!=0 || foreground[200*640+300]!=42 ||
-       !menu_content_visible(&background,1920,&foreground,None) {
-        return Err("El cursor oculto deja restos o elimina el texto directo del briefing".into())
-    }
-    frame.fill(0);copy_menu_foreground(&frame,1920,&mut foreground);
-    if menu_content_visible(&background,1920,&foreground,None) {
-        return Err("Se publica una superficie vacía durante la carga".into())
-    }
-    log("TEST transición: cursor oculto renovado, briefing conservado y primarias vacías retenidas");
+    refresh_cursor_region(&mut foreground,&frame,1920,[-100,-100,-1,-1]);
+    refresh_cursor_region(&mut foreground,&frame,1920,[639,479,700,500]);
+    log("TEST cursor: se limpia solo su rectángulo y se conserva el texto del briefing");
     let mut title=vec![91u8;1920*1080];let original=vec![17u8;640*480];
     let mut stage=vec![17u8;1920*1080];stage[400*1920+320]=0;stage[400*1920+321]=42;
     let now=std::time::Instant::now();

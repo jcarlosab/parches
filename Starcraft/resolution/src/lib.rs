@@ -31,8 +31,7 @@ static mut MENU_STAGE:usize=0;
 static mut STORM_LOCK:usize=0;
 static mut STORM_UNLOCK:usize=0;
 static mut MENU_CURSOR:usize=0;
-static mut MENU_CAPTURED:bool=false;
-static mut PRESENTED_FRAME:bool=false;
+static mut LAST_MENU_CURSOR:Option<[i16;4]>=None;
 static mut DIAGNOSTICS:bool=false;
 static mut DIAGNOSTIC_FRAME:u32=0;
 static mut MENU_OUTPUT:usize=0;
@@ -254,7 +253,6 @@ unsafe fn frame() {
 unsafe extern "C" fn compose() {
     if VIDEO_ACTIVE {let f:unsafe extern "C" fn()=mem::transmute(COMPOSE);f();return}
     frame();
-    MENU_CAPTURED=false;
     GAME_FRAME_READY=false;
     let cursor=ptr::read_unaligned(0x006cef52 as *const [i16;2]);
     let tooltip=ptr::read_unaligned(0x006cef66 as *const [i16;2]);
@@ -267,10 +265,16 @@ unsafe extern "C" fn compose() {
     }
     // Scale after the complete layer walk, not during cursor restore-under:
     // that helper can run before every menu surface has been composited.
-    if IN_GAME {if GAME_FRAME_READY {publish_frame();}}else if MENU_FULL_ROOT || PRESENTED_FRAME {
-        // With a hidden cursor the native restore-under callback does not run.
-        // Capture the clean foreground now instead of reusing its last cursor.
-        if !MENU_CAPTURED {capture_menu_foreground();}
+    if IN_GAME {if GAME_FRAME_READY {publish_frame();}}else if MENU_FULL_ROOT {
+        if *(0x006cef50 as *const u8)==0 {
+            if let Some(rect)=LAST_MENU_CURSOR.take() {
+                let buf=read32(0x006ceff4) as usize;
+                if readable(buf,WIDTH*HEIGHT) {
+                    refresh_cursor_region(slice::from_raw_parts_mut(MENU_CURSOR as *mut u8,640*480),
+                        slice::from_raw_parts(buf as *const u8,WIDTH*HEIGHT),WIDTH,rect);
+                }
+            }
+        }
         menu_primary();
     }
     if DIAGNOSTICS {
@@ -278,7 +282,8 @@ unsafe extern "C" fn compose() {
         if DIAGNOSTIC_FRAME%120==0 {
             let fb=read32(0x006ceff4) as usize;
             let pixels=|at:usize,n:usize|if readable(at,n) {slice::from_raw_parts(at as *const u8,n).iter().filter(|&&p|p!=0).count()}else{0};
-            log(&format!("DIAG full={} game={} cursor={} capture={} stage={} foreground={} fb={} force={}",MENU_FULL_ROOT,IN_GAME,*(0x6cef50 as *const u8),MENU_CAPTURED,pixels(MENU_STAGE,WIDTH*HEIGHT),pixels(MENU_CURSOR,640*480),pixels(fb,WIDTH*HEIGHT),*(0x51a0e9 as *const u8)));
+            let palette=slice::from_raw_parts(0x6ceb40 as *const u8,1024).iter().map(|&v|v as usize).sum::<usize>();
+            log(&format!("DIAG full={} game={} cursor={} stage={} foreground={} fb={} force={} palette={}",MENU_FULL_ROOT,IN_GAME,*(0x6cef50 as *const u8),pixels(MENU_STAGE,WIDTH*HEIGHT),pixels(MENU_CURSOR,640*480),pixels(fb,WIDTH*HEIGHT),*(0x51a0e9 as *const u8),palette));
         }
     }
 }
@@ -484,7 +489,7 @@ unsafe extern "system" fn ui_hit(x:i32,y:i32)->u32 {
 // Redirect all menu primary-surface locks to a private offscreen canvas.
 // The real primary receives exactly one final scaled image per composed frame.
 unsafe extern "system" fn menu_lock(surface:i32,rect:*const Rect,out:*mut usize,pitch:*mut i32,flags:i32)->i32 {
-    if surface==0 && !VIDEO_ACTIVE && (IN_GAME || MENU_FULL_ROOT || PRESENTED_FRAME) && MENU_STAGE!=0 {
+    if surface==0 && !VIDEO_ACTIVE && (IN_GAME || MENU_FULL_ROOT) && MENU_STAGE!=0 {
         if out.is_null() || pitch.is_null() {return 0}
         let (x,y)=if rect.is_null() {(0,0)}else{
             let r=*rect;
@@ -522,9 +527,6 @@ unsafe extern "C" fn play_movie(id:u32)->u32 {
     log(&format!("Video terminado: {id}, resultado {result}"));result
 }
 unsafe fn menu_primary() {
-    // Backgrounds and roots can be absent while the next screen/map loads.
-    // Keep the last complete primary rather than publishing the cleared canvas.
-    if !AI_TITLE && !menu_has_content() {return}
     let (left,top,w,h)=menu_viewport(WIDTH,HEIGHT);
     ptr::write_bytes(MENU_OUTPUT as *mut u8,0,WIDTH*HEIGHT);
     if AI_TITLE {
@@ -561,27 +563,18 @@ unsafe fn publish_frame() {
     if lock(0,ptr::null(),&mut dst,&mut pitch,0)==0 || dst==0 {return}
     if pitch>=WIDTH as i32 && primary_rows()>=HEIGHT {
         for y in 0..HEIGHT {ptr::copy_nonoverlapping((MENU_OUTPUT+y*WIDTH) as *const u8,(dst+y*pitch as usize) as *mut u8,WIDTH);}
-        PRESENTED_FRAME=true;
     }
     unlock(0,dst,0,0);
 }
-unsafe fn capture_menu_foreground() {
-    let buf=read32(0x006ceff4) as usize;
-    if MENU_CURSOR!=0 && readable(buf,WIDTH*HEIGHT) {
-        copy_menu_foreground(slice::from_raw_parts(buf as *const u8,WIDTH*HEIGHT),WIDTH,
-                             slice::from_raw_parts_mut(MENU_CURSOR as *mut u8,640*480));
-        MENU_CAPTURED=true;
-    }
-}
-unsafe fn menu_has_content()->bool {
-    let cursor=if *(0x006cef50 as *const u8)!=0 {
-        Some(ptr::read_unaligned(0x006cef40 as *const [i16;4]))
-    }else{None};
-    menu_content_visible(slice::from_raw_parts(MENU_STAGE as *const u8,WIDTH*HEIGHT),WIDTH,
-                         slice::from_raw_parts(MENU_CURSOR as *const u8,640*480),cursor)
-}
 unsafe extern "system" fn restore_under(bitmap:u32) {
-    if !VIDEO_ACTIVE && !IN_GAME && MENU_FULL_ROOT && bitmap==0x006ceff0 {capture_menu_foreground();}
+    if !VIDEO_ACTIVE && !IN_GAME && MENU_FULL_ROOT && bitmap==0x006ceff0 {
+        LAST_MENU_CURSOR=Some(ptr::read_unaligned(0x006cef40 as *const [i16;4]));
+        let buf=read32(0x006ceff4) as usize;
+        if MENU_CURSOR!=0 && readable(buf,WIDTH*HEIGHT) {
+            let dx=0;let dy=0;
+            for y in 0..480 {ptr::copy_nonoverlapping((buf+(dy+y)*WIDTH+dx) as *const u8,(MENU_CURSOR+y*640) as *mut u8,640);}
+        }
+    }
     let f:unsafe extern "system" fn(u32)=mem::transmute(RESTORE);f(bitmap);
 }
 unsafe extern "system" fn game_window(hwnd:Handle,msg:u32,w:usize,mut l:isize)->isize {
@@ -620,6 +613,7 @@ unsafe extern "system" fn background_loaded(file:*const u8,palette:usize,bits:us
     if name.ends_with(b"title.pcx") || name.ends_with(b"backgnd.pcx") {
         let buf=read32(0x006ceff4) as usize;
         if readable(buf,WIDTH*HEIGHT) {ptr::write_bytes(buf as *mut u8,0,WIDTH*HEIGHT);}
+        LAST_MENU_CURSOR=None;
         if MENU_CURSOR!=0 {ptr::write_bytes(MENU_CURSOR as *mut u8,0,640*480);}
         if MENU_STAGE!=0 {ptr::write_bytes(MENU_STAGE as *mut u8,0,WIDTH*HEIGHT);}
         log(&format!("Fondo de menu: {}",String::from_utf8_lossy(&name)));
@@ -747,7 +741,7 @@ unsafe fn install(w:u32,h:u32)->Result<(),String> {
     write(ui_stub,&code)?;
     hook(0x4d1140,ui_stub,&[0x3b,0x05,0x6c,0x6b,0x59,0x00])?;
     INITIALIZED=true;
-    log(&format!("Rust v13: resolución {w}x{h}; {} firmas comprobadas; cursor actualizado con visibilidad nativa y transición sin primarias vacías",patches.len()));
+    log(&format!("Rust v14: resolución {w}x{h}; {} firmas comprobadas; interfaz ampliada a la izquierda, recursos ampliados y ventanas sobre texto",patches.len()));
     Ok(())
 }
 

@@ -61,12 +61,11 @@ storm.dll `706ff2164ca472f27c44235ed55586644e5c86e68cd69b62d76f5a78778bff25`.
 - El fondo de recursos usa una máscara basada en RGB de la paleta y conexión
   con el borde; no basta con tratar el índice 0 como transparente.
 - El callback restore-under no se ejecuta cuando el juego oculta el cursor.
-  Renovar la capa de primer plano al terminar compose en ese caso, incluidos los
-  ceros, sin borrar los textos directos del briefing. No reutilizar el cursor del
-  frame anterior: al cambiar la paleta aparece como una flecha naranja.
-- Tras publicar una imagen, redirigir también las primarias del intervalo sin
-  raíces de menú y retener el último frame hasta disponer de contenido. Una
-  superficie vacía o solo con cursor no es una pantalla de carga válida.
+  Conservar su último rectángulo y renovarlo con el fondo limpio. No reemplazar
+  todo el primer plano: también contiene los textos directos del briefing.
+- Redirigir locks y publicar menús únicamente con raíces completas o en partida.
+  No extender esta redirección al intervalo sin raíces entre pantallas: altera el
+  dibujo nativo y puede dejar el briefing negro. Respetar los fundidos del juego.
 - Preparar la imagen inicial ampliada UNA vez por carga. Después solo copiar
   el fondo y componer las diferencias del texto nativo (Loading/Cargando).
   No volver a escalar millones de píxeles ni invalidar todos los controles de
