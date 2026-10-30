@@ -1,0 +1,582 @@
+{
+  "native_instruction_cases": 64,
+  "gameplay_tested": false,
+  "cases": [
+    {
+      "enabled": false,
+      "population": 0,
+      "cost": 1,
+      "count": 1,
+      "action": "recruit",
+      "actual": 4294967295,
+      "passed": true
+    },
+    {
+      "enabled": false,
+      "population": 0,
+      "cost": 1,
+      "count": 1,
+      "action": "cancel",
+      "actual": 1,
+      "passed": true
+    },
+    {
+      "enabled": false,
+      "population": 0,
+      "cost": 2,
+      "count": 16,
+      "action": "recruit",
+      "actual": 4294967264,
+      "passed": true
+    },
+    {
+      "enabled": false,
+      "population": 0,
+      "cost": 2,
+      "count": 16,
+      "action": "cancel",
+      "actual": 32,
+      "passed": true
+    },
+    {
+      "enabled": false,
+      "population": 0,
+      "cost": 5,
+      "count": 32,
+      "action": "recruit",
+      "actual": 4294967136,
+      "passed": true
+    },
+    {
+      "enabled": false,
+      "population": 0,
+      "cost": 5,
+      "count": 32,
+      "action": "cancel",
+      "actual": 160,
+      "passed": true
+    },
+    {
+      "enabled": false,
+      "population": 0,
+      "cost": 48,
+      "count": 1,
+      "action": "recruit",
+      "actual": 4294967248,
+      "passed": true
+    },
+    {
+      "enabled": false,
+      "population": 0,
+      "cost": 48,
+      "count": 1,
+      "action": "cancel",
+      "actual": 48,
+      "passed": true
+    },
+    {
+      "enabled": false,
+      "population": 50,
+      "cost": 1,
+      "count": 1,
+      "action": "recruit",
+      "actual": 49,
+      "passed": true
+    },
+    {
+      "enabled": false,
+      "population": 50,
+      "cost": 1,
+      "count": 1,
+      "action": "cancel",
+      "actual": 51,
+      "passed": true
+    },
+    {
+      "enabled": false,
+      "population": 50,
+      "cost": 2,
+      "count": 16,
+      "action": "recruit",
+      "actual": 18,
+      "passed": true
+    },
+    {
+      "enabled": false,
+      "population": 50,
+      "cost": 2,
+      "count": 16,
+      "action": "cancel",
+      "actual": 82,
+      "passed": true
+    },
+    {
+      "enabled": false,
+      "population": 50,
+      "cost": 5,
+      "count": 32,
+      "action": "recruit",
+      "actual": 4294967186,
+      "passed": true
+    },
+    {
+      "enabled": false,
+      "population": 50,
+      "cost": 5,
+      "count": 32,
+      "action": "cancel",
+      "actual": 210,
+      "passed": true
+    },
+    {
+      "enabled": false,
+      "population": 50,
+      "cost": 48,
+      "count": 1,
+      "action": "recruit",
+      "actual": 2,
+      "passed": true
+    },
+    {
+      "enabled": false,
+      "population": 50,
+      "cost": 48,
+      "count": 1,
+      "action": "cancel",
+      "actual": 98,
+      "passed": true
+    },
+    {
+      "enabled": false,
+      "population": 500,
+      "cost": 1,
+      "count": 1,
+      "action": "recruit",
+      "actual": 499,
+      "passed": true
+    },
+    {
+      "enabled": false,
+      "population": 500,
+      "cost": 1,
+      "count": 1,
+      "action": "cancel",
+      "actual": 501,
+      "passed": true
+    },
+    {
+      "enabled": false,
+      "population": 500,
+      "cost": 2,
+      "count": 16,
+      "action": "recruit",
+      "actual": 468,
+      "passed": true
+    },
+    {
+      "enabled": false,
+      "population": 500,
+      "cost": 2,
+      "count": 16,
+      "action": "cancel",
+      "actual": 532,
+      "passed": true
+    },
+    {
+      "enabled": false,
+      "population": 500,
+      "cost": 5,
+      "count": 32,
+      "action": "recruit",
+      "actual": 340,
+      "passed": true
+    },
+    {
+      "enabled": false,
+      "population": 500,
+      "cost": 5,
+      "count": 32,
+      "action": "cancel",
+      "actual": 660,
+      "passed": true
+    },
+    {
+      "enabled": false,
+      "population": 500,
+      "cost": 48,
+      "count": 1,
+      "action": "recruit",
+      "actual": 452,
+      "passed": true
+    },
+    {
+      "enabled": false,
+      "population": 500,
+      "cost": 48,
+      "count": 1,
+      "action": "cancel",
+      "actual": 548,
+      "passed": true
+    },
+    {
+      "enabled": false,
+      "population": 1000,
+      "cost": 1,
+      "count": 1,
+      "action": "recruit",
+      "actual": 999,
+      "passed": true
+    },
+    {
+      "enabled": false,
+      "population": 1000,
+      "cost": 1,
+      "count": 1,
+      "action": "cancel",
+      "actual": 1000,
+      "passed": true
+    },
+    {
+      "enabled": false,
+      "population": 1000,
+      "cost": 2,
+      "count": 16,
+      "action": "recruit",
+      "actual": 968,
+      "passed": true
+    },
+    {
+      "enabled": false,
+      "population": 1000,
+      "cost": 2,
+      "count": 16,
+      "action": "cancel",
+      "actual": 1000,
+      "passed": true
+    },
+    {
+      "enabled": false,
+      "population": 1000,
+      "cost": 5,
+      "count": 32,
+      "action": "recruit",
+      "actual": 840,
+      "passed": true
+    },
+    {
+      "enabled": false,
+      "population": 1000,
+      "cost": 5,
+      "count": 32,
+      "action": "cancel",
+      "actual": 1000,
+      "passed": true
+    },
+    {
+      "enabled": false,
+      "population": 1000,
+      "cost": 48,
+      "count": 1,
+      "action": "recruit",
+      "actual": 952,
+      "passed": true
+    },
+    {
+      "enabled": false,
+      "population": 1000,
+      "cost": 48,
+      "count": 1,
+      "action": "cancel",
+      "actual": 1000,
+      "passed": true
+    },
+    {
+      "enabled": true,
+      "population": 0,
+      "cost": 1,
+      "count": 1,
+      "action": "recruit",
+      "actual": 0,
+      "passed": true
+    },
+    {
+      "enabled": true,
+      "population": 0,
+      "cost": 1,
+      "count": 1,
+      "action": "cancel",
+      "actual": 0,
+      "passed": true
+    },
+    {
+      "enabled": true,
+      "population": 0,
+      "cost": 2,
+      "count": 16,
+      "action": "recruit",
+      "actual": 0,
+      "passed": true
+    },
+    {
+      "enabled": true,
+      "population": 0,
+      "cost": 2,
+      "count": 16,
+      "action": "cancel",
+      "actual": 0,
+      "passed": true
+    },
+    {
+      "enabled": true,
+      "population": 0,
+      "cost": 5,
+      "count": 32,
+      "action": "recruit",
+      "actual": 0,
+      "passed": true
+    },
+    {
+      "enabled": true,
+      "population": 0,
+      "cost": 5,
+      "count": 32,
+      "action": "cancel",
+      "actual": 0,
+      "passed": true
+    },
+    {
+      "enabled": true,
+      "population": 0,
+      "cost": 48,
+      "count": 1,
+      "action": "recruit",
+      "actual": 0,
+      "passed": true
+    },
+    {
+      "enabled": true,
+      "population": 0,
+      "cost": 48,
+      "count": 1,
+      "action": "cancel",
+      "actual": 0,
+      "passed": true
+    },
+    {
+      "enabled": true,
+      "population": 50,
+      "cost": 1,
+      "count": 1,
+      "action": "recruit",
+      "actual": 50,
+      "passed": true
+    },
+    {
+      "enabled": true,
+      "population": 50,
+      "cost": 1,
+      "count": 1,
+      "action": "cancel",
+      "actual": 50,
+      "passed": true
+    },
+    {
+      "enabled": true,
+      "population": 50,
+      "cost": 2,
+      "count": 16,
+      "action": "recruit",
+      "actual": 50,
+      "passed": true
+    },
+    {
+      "enabled": true,
+      "population": 50,
+      "cost": 2,
+      "count": 16,
+      "action": "cancel",
+      "actual": 50,
+      "passed": true
+    },
+    {
+      "enabled": true,
+      "population": 50,
+      "cost": 5,
+      "count": 32,
+      "action": "recruit",
+      "actual": 50,
+      "passed": true
+    },
+    {
+      "enabled": true,
+      "population": 50,
+      "cost": 5,
+      "count": 32,
+      "action": "cancel",
+      "actual": 50,
+      "passed": true
+    },
+    {
+      "enabled": true,
+      "population": 50,
+      "cost": 48,
+      "count": 1,
+      "action": "recruit",
+      "actual": 50,
+      "passed": true
+    },
+    {
+      "enabled": true,
+      "population": 50,
+      "cost": 48,
+      "count": 1,
+      "action": "cancel",
+      "actual": 50,
+      "passed": true
+    },
+    {
+      "enabled": true,
+      "population": 500,
+      "cost": 1,
+      "count": 1,
+      "action": "recruit",
+      "actual": 500,
+      "passed": true
+    },
+    {
+      "enabled": true,
+      "population": 500,
+      "cost": 1,
+      "count": 1,
+      "action": "cancel",
+      "actual": 500,
+      "passed": true
+    },
+    {
+      "enabled": true,
+      "population": 500,
+      "cost": 2,
+      "count": 16,
+      "action": "recruit",
+      "actual": 500,
+      "passed": true
+    },
+    {
+      "enabled": true,
+      "population": 500,
+      "cost": 2,
+      "count": 16,
+      "action": "cancel",
+      "actual": 500,
+      "passed": true
+    },
+    {
+      "enabled": true,
+      "population": 500,
+      "cost": 5,
+      "count": 32,
+      "action": "recruit",
+      "actual": 500,
+      "passed": true
+    },
+    {
+      "enabled": true,
+      "population": 500,
+      "cost": 5,
+      "count": 32,
+      "action": "cancel",
+      "actual": 500,
+      "passed": true
+    },
+    {
+      "enabled": true,
+      "population": 500,
+      "cost": 48,
+      "count": 1,
+      "action": "recruit",
+      "actual": 500,
+      "passed": true
+    },
+    {
+      "enabled": true,
+      "population": 500,
+      "cost": 48,
+      "count": 1,
+      "action": "cancel",
+      "actual": 500,
+      "passed": true
+    },
+    {
+      "enabled": true,
+      "population": 1000,
+      "cost": 1,
+      "count": 1,
+      "action": "recruit",
+      "actual": 1000,
+      "passed": true
+    },
+    {
+      "enabled": true,
+      "population": 1000,
+      "cost": 1,
+      "count": 1,
+      "action": "cancel",
+      "actual": 1000,
+      "passed": true
+    },
+    {
+      "enabled": true,
+      "population": 1000,
+      "cost": 2,
+      "count": 16,
+      "action": "recruit",
+      "actual": 1000,
+      "passed": true
+    },
+    {
+      "enabled": true,
+      "population": 1000,
+      "cost": 2,
+      "count": 16,
+      "action": "cancel",
+      "actual": 1000,
+      "passed": true
+    },
+    {
+      "enabled": true,
+      "population": 1000,
+      "cost": 5,
+      "count": 32,
+      "action": "recruit",
+      "actual": 1000,
+      "passed": true
+    },
+    {
+      "enabled": true,
+      "population": 1000,
+      "cost": 5,
+      "count": 32,
+      "action": "cancel",
+      "actual": 1000,
+      "passed": true
+    },
+    {
+      "enabled": true,
+      "population": 1000,
+      "cost": 48,
+      "count": 1,
+      "action": "recruit",
+      "actual": 1000,
+      "passed": true
+    },
+    {
+      "enabled": true,
+      "population": 1000,
+      "cost": 48,
+      "count": 1,
+      "action": "cancel",
+      "actual": 1000,
+      "passed": true
+    }
+  ]
+}
